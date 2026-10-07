@@ -41,7 +41,15 @@
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
-
+<!-- ADDED -->
+A user types a plain-language request for a secondhand clothing item, such as
+"vintage graphic tee under $30" or "90s track jacket in size M". FitFindr
+searches a set of 40 listings, picks the best match, and asks a model to suggest
+one or two outfits that combine it with pieces from the user's wardrobe. It then
+returns a short, post-style fit card caption that names the item, its price, and
+the platform it's listed on. If nothing matches, it stops early and says what to
+change, such as raising the price limit, dropping the size, or using broader
+keywords.
 
 ---
 
@@ -64,6 +72,7 @@
 - **Returns:** A list of at most 10 (`config.SEARCH_RESULT_LIMIT`) listing dicts, best match first. Each dict has `id`, `title` (str), `description` (str), `category` (str), `style_tags` (list), `size` (str), `condition` (str), `price` (float), `colors` (list), `brand` (str or None), and `platform` (str).
 - **When it has nothing:** Returns an empty list `[]`. Never `None`, never an exception.
 - **Matching rules:** `max_price` is inclusive. A size matches when the requested size equals one whole token of the listing's size, compared case-insensitively. Tokens are split on `/` and spaces, so "M" matches "S/M" but not "us 9" or "XL". A listing with zero keyword overlap is dropped.
+- <!-- ADDED --> **MCP:** This tool is registered in `mcp_server.py` with the same name, the same three inputs and types (`description: str`, `size: str | None`, `max_price: float | None`), and a description that states the empty case. The agent calls it through `mcp_client.call_tool`.
 
 ### `suggest_outfit`
 
@@ -102,6 +111,9 @@
 
 **What moves through the session:** In order: `query` → `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`. Each tool reads its input back out of the session rather than receiving it directly from the previous call. `error` is `None` unless the run ended early.
 
+<!-- ADDED -->
+**Other ways the loop stops early (unit 4):** The search step goes through MCP, so if the MCP server can't be reached, `run_agent` catches `MCPError` and sets `session["error"]`. If the model can't be reached, it catches `ModelUnavailable` in the `suggest_outfit` and `create_fit_card` steps and sets `session["error"]` the same way. In every early stop `session["fit_card"]` stays `None`. All of this is in `agent.py::run_agent`.
+
 ---
 
 ## Sample Run
@@ -116,6 +128,7 @@
 ```
 $ python app.py ask '...'
 
+PASTE YOUR REAL COMMAND AND OUTPUT HERE
 ```
 
 **The three tools, tested one at a time**
@@ -123,16 +136,19 @@ $ python app.py ask '...'
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
 
+PASTE YOUR REAL OUTPUT HERE
 ```
 
 ```
 $ python -c "from tools import suggest_outfit; ..."
 
+PASTE YOUR REAL COMMAND AND OUTPUT HERE
 ```
 
 ```
 $ python -c "from tools import create_fit_card; ..."
 
+PASTE YOUR REAL COMMAND AND OUTPUT HERE
 ```
 
 ---
@@ -240,13 +256,23 @@ that produced it:
 **Happy path**
 
 ```
+$ python app.py ask 'vintage graphic tee under $30' --trace
 
+PASTE YOUR REAL TRACE HERE. It should show, in order:
+[1] search_listings (via MCP)
+[2] branch
+[3] suggest_outfit
+[4] create_fit_card
 ```
 
 **Empty search**
 
 ```
+$ python app.py ask 'designer ballgown size XXS under $5' --trace
 
+PASTE YOUR REAL TRACE HERE. It should stop after:
+[1] search_listings (via MCP)
+[2] branch
 ```
 
 **On the MCP move:** <!-- what changed in your code, and whether anything
@@ -254,7 +280,50 @@ behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
+<!-- ADDED — edit the last sentence to match what you actually saw. -->
+In `mcp_server.py` I registered `search_listings` with `@mcp.tool()`, with typed
+inputs (`description: str`, `size: str | None`, `max_price: float | None`) and a
+description that names units and the empty case. In `agent.py::run_agent` I
+replaced the direct call `search_listings(...)` with
+`mcp_client.call_tool("search_listings", {...})` and added an `MCPError`
+handler. I compared the ids returned by the direct call and by the MCP call for
+the same query: `PASTE THE TWO ID LISTS HERE, AND SAY WHETHER THEY MATCHED`.
 
+<!-- ADDED -->
+### Failure Modes (Milestone 2)
+
+I triggered each failure one at a time. The messages below are what the agent
+printed.
+
+**1. Empty search**
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5'
+
+PASTE THE EXACT MESSAGE HERE
+```
+
+**2. Empty wardrobe**
+
+```
+$ python app.py ask 'denim jacket under $50' --empty-wardrobe
+
+PASTE THE EXACT OUTPUT HERE
+```
+
+**3. Model unavailable** (one character of the key changed in `.env`, then a query I hadn't asked before; the key has since been restored)
+
+```
+$ python app.py ask 'red corduroy pants under $60'
+
+PASTE THE EXACT MESSAGE HERE
+```
+
+**What I changed:** `ModelUnavailable` was raised by `generate.py` but nothing in
+`agent.py` caught it, so the user saw a raw exception line. I added handlers in
+the `suggest` and `card` steps of `agent.py::run_agent`. Each one sets
+`session["error"]` to a message naming what broke and what to do next.
+`EDIT THIS LINE IF ANY OF THE THREE FAILURES BEHAVED DIFFERENTLY FOR YOU.`
 
 ---
 
