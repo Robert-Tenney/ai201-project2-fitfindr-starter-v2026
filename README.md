@@ -41,7 +41,6 @@
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
-
 A user types a plain-language request for a secondhand clothing item, such as
 "vintage graphic tee under $30" or "90s track jacket in size M". FitFindr
 searches a set of 40 listings, picks the best match, and asks a model to suggest
@@ -72,7 +71,7 @@ keywords.
 - **Returns:** A list of at most 10 (`config.SEARCH_RESULT_LIMIT`) listing dicts, best match first. Each dict has `id`, `title` (str), `description` (str), `category` (str), `style_tags` (list), `size` (str), `condition` (str), `price` (float), `colors` (list), `brand` (str or None), and `platform` (str).
 - **When it has nothing:** Returns an empty list `[]`. Never `None`, never an exception.
 - **Matching rules:** `max_price` is inclusive. A size matches when the requested size equals one whole token of the listing's size, compared case-insensitively. Tokens are split on `/` and spaces, so "M" matches "S/M" but not "us 9" or "XL". A listing with zero keyword overlap is dropped.
--  **MCP:** This tool is registered in `mcp_server.py` with the same name, the same three inputs and types (`description: str`, `size: str | None`, `max_price: float | None`), and a description that states the empty case. The agent calls it through `mcp_client.call_tool`.
+- **MCP:** This tool is registered in `mcp_server.py` with the same name, the same three inputs and types (`description: str`, `size: str | None`, `max_price: float | None`), and a description that states the empty case. The agent calls it through `mcp_client.call_tool`.
 
 ### `suggest_outfit`
 
@@ -110,7 +109,6 @@ keywords.
 **How the query is parsed:** Regex. A pattern pulls a price like "under $30" into `max_price` (float) and a size like "size M" or "in size M" into `size`. The remaining words become `description`. The result is stored in `session["parsed"]`.
 
 **What moves through the session:** In order: `query` → `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`. Each tool reads its input back out of the session rather than receiving it directly from the previous call. `error` is `None` unless the run ended early.
-
 
 **Other ways the loop stops early (unit 4):** The search step goes through MCP, so if the MCP server can't be reached, `run_agent` catches `MCPError` and sets `session["error"]`. If the model can't be reached, it catches `ModelUnavailable` in the `suggest_outfit` and `create_fit_card` steps and sets `session["error"]` the same way. In every early stop `session["fit_card"]` stays `None`. All of this is in `agent.py::run_agent`.
 
@@ -174,9 +172,17 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
 - *What came back:*
 - *What I changed:*
 
-<!-- ADDED — unit 4 note: if you used score_results.py (written by Claude) to
+<!-- Unit 4 note: if you used score_results.py (written by Claude) to
      draft the PASS/FAIL cells, say so here, and say what you checked by hand
      and whether you changed any of its verdicts. -->
+
+**Unit 4 note:** Claude wrote `score_results.py` to draft the PASS/FAIL cells. Its
+first version's criterion 2 check rejected any results block containing the
+word `suggest_outfit`, but the branch step's note says "stopping before
+suggest_outfit", so every try would have failed. I caught it by comparing the
+scorer's output with the raw results file, and changed the check to look for the
+trace step line `[n] suggest_outfit` only. `EDIT THIS IF YOU DID NOT SEE THIS, AND
+ADD ANY OTHER VERDICT YOU CHANGED BY HAND.`
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
@@ -196,7 +202,7 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
      `python run_eval.py --label before` runs everything and writes the table
      into results/. Paste it here and fill in the verdicts. -->
 
-<!-- ADDED — the criterion names and targets come from criteria.md. Replace the
+<!-- The criterion names and targets come from criteria.md. Replace the
      blank Try and Verdict cells with PASS / FAIL and e.g. MET (5/5) from your
      own reading of results/run_<timestamp>_before.md. -->
 
@@ -208,7 +214,6 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
 | 4. The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds* |  |  |  |  |  |  |
 | 5. A price ceiling is always respected | 5 of 5 |  |  |  |  |  |  |
 
-
 \*Criterion 4 as written in `criteria.md` asks for at least 4 of 5 cards well
 formed (2 to 4 sentences, exact price, platform name) and no two sharing a first
 sentence. Criteria 4 and 5 each use five different scenarios, so Try k is round
@@ -217,7 +222,6 @@ each of the five price-ceiling queries). A round passes when it meets the
 criterion as written. I read the row against 5 of 5 rounds because the
 no-shared-first-sentence part has no allowance. `EDIT THIS NOTE IF YOUR OWN
 READING OF THE TARGET IS DIFFERENT.`
-
 
 **How I scored the tries:** I ran `python run_eval.py --label before` (cache off,
 five tries per scenario), then drafted the PASS/FAIL cells with
@@ -230,8 +234,6 @@ that produced it:
 ```
 PASTE REAL OUTPUT HERE
 ```
-
-<!-- ADDED — one block per criterion, from a single try, as text. -->
 
 **Criterion 1** — `agent.py::run_agent`, run by `run_eval.py::main`:
 
@@ -285,15 +287,29 @@ PASTE ONE QUERY AND THE PRICES RETURNED
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | A matching query completes all three tools | 4 of 5 | `MET or MISSED (x/5)` | `e.g. "x PASS cells against a 4 of 5 target"` |
+| 2 | An impossible query stops before the second tool | 5 of 5 | `MET or MISSED (x/5)` | `...` |
+| 3 | The item the search found is the item the next tool received | 5 of 5 | `MET or MISSED (x/5)` | `...` |
+| 4 | The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds | `MET or MISSED (x/5)` | `...` |
+| 5 | A price ceiling is always respected | 5 of 5 | `MET or MISSED (x/5)` | `...` |
 
 **Diagnoses**
 
+`DELETE THIS TEMPLATE AND WRITE ONE ENTRY PER MISS, FROM YOUR OWN RESULTS.`
 
+**Criterion N — MISSED (x/5).** Place: `tool / loop branch / session / model output`.
+Mechanism: `what happened, with evidence from the results file, such as the try
+numbers and the exact text that broke the criterion`. `One sentence on why that
+follows from my code or prompt, naming the file and function.`
+
+**Pattern:** `which misses share a cause, or "no pattern, the misses were independent"`.
+
+**If I missed nothing:** `say so, then name the criterion whose target was too
+easy and how I would tighten it.`
+
+**Note on criterion 5:** `The check is a deterministic filter, so all five tries
+give the same result. I also confirmed each of the five queries returned at least
+one listing, so the check tested something.` `EDIT IF NOT TRUE.`
 
 ---
 
@@ -336,7 +352,7 @@ behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
-<!-- ADDED — edit the last sentence to match what you actually saw. -->
+<!-- Edit the last sentence to match what you actually saw. -->
 In `mcp_server.py` I registered `search_listings` with `@mcp.tool()`, with typed
 inputs (`description: str`, `size: str | None`, `max_price: float | None`) and a
 description that names units and the empty case. In `agent.py::run_agent` I
@@ -344,7 +360,6 @@ replaced the direct call `search_listings(...)` with
 `mcp_client.call_tool("search_listings", {...})` and added an `MCPError`
 handler. I compared the ids returned by the direct call and by the MCP call for
 the same query: `PASTE THE TWO ID LISTS HERE, AND SAY WHETHER THEY MATCHED`.
-
 
 ### Failure Modes (Milestone 2)
 
