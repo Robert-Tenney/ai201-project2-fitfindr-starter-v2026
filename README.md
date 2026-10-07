@@ -41,7 +41,7 @@
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
-<!-- ADDED -->
+
 A user types a plain-language request for a secondhand clothing item, such as
 "vintage graphic tee under $30" or "90s track jacket in size M". FitFindr
 searches a set of 40 listings, picks the best match, and asks a model to suggest
@@ -72,7 +72,7 @@ keywords.
 - **Returns:** A list of at most 10 (`config.SEARCH_RESULT_LIMIT`) listing dicts, best match first. Each dict has `id`, `title` (str), `description` (str), `category` (str), `style_tags` (list), `size` (str), `condition` (str), `price` (float), `colors` (list), `brand` (str or None), and `platform` (str).
 - **When it has nothing:** Returns an empty list `[]`. Never `None`, never an exception.
 - **Matching rules:** `max_price` is inclusive. A size matches when the requested size equals one whole token of the listing's size, compared case-insensitively. Tokens are split on `/` and spaces, so "M" matches "S/M" but not "us 9" or "XL". A listing with zero keyword overlap is dropped.
-- <!-- ADDED --> **MCP:** This tool is registered in `mcp_server.py` with the same name, the same three inputs and types (`description: str`, `size: str | None`, `max_price: float | None`), and a description that states the empty case. The agent calls it through `mcp_client.call_tool`.
+-  **MCP:** This tool is registered in `mcp_server.py` with the same name, the same three inputs and types (`description: str`, `size: str | None`, `max_price: float | None`), and a description that states the empty case. The agent calls it through `mcp_client.call_tool`.
 
 ### `suggest_outfit`
 
@@ -111,7 +111,7 @@ keywords.
 
 **What moves through the session:** In order: `query` → `parsed` → `search_results` → `selected_item` → `outfit_suggestion` → `fit_card`. Each tool reads its input back out of the session rather than receiving it directly from the previous call. `error` is `None` unless the run ended early.
 
-<!-- ADDED -->
+
 **Other ways the loop stops early (unit 4):** The search step goes through MCP, so if the MCP server can't be reached, `run_agent` catches `MCPError` and sets `session["error"]`. If the model can't be reached, it catches `ModelUnavailable` in the `suggest_outfit` and `create_fit_card` steps and sets `session["error"]` the same way. In every early stop `session["fit_card"]` stays `None`. All of this is in `agent.py::run_agent`.
 
 ---
@@ -174,6 +174,10 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
 - *What came back:*
 - *What I changed:*
 
+<!-- ADDED — unit 4 note: if you used score_results.py (written by Claude) to
+     draft the PASS/FAIL cells, say so here, and say what you checked by hand
+     and whether you changed any of its verdicts. -->
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -192,19 +196,71 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
      `python run_eval.py --label before` runs everything and writes the table
      into results/. Paste it here and fill in the verdicts. -->
 
+<!-- ADDED — the criterion names and targets come from criteria.md. Replace the
+     blank Try and Verdict cells with PASS / FAIL and e.g. MET (5/5) from your
+     own reading of results/run_<timestamp>_before.md. -->
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 |  |  |  |  |  |  |
+| 2. An impossible query stops before the second tool | 5 of 5 |  |  |  |  |  |  |
+| 3. The item the search found is the item the next tool received | 5 of 5 |  |  |  |  |  |  |
+| 4. The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds* |  |  |  |  |  |  |
+| 5. A price ceiling is always respected | 5 of 5 |  |  |  |  |  |  |
+
+
+\*Criterion 4 as written in `criteria.md` asks for at least 4 of 5 cards well
+formed (2 to 4 sentences, exact price, platform name) and no two sharing a first
+sentence. Criteria 4 and 5 each use five different scenarios, so Try k is round
+k across all five (the k-th card of each of the five items, or the k-th run of
+each of the five price-ceiling queries). A round passes when it meets the
+criterion as written. I read the row against 5 of 5 rounds because the
+no-shared-first-sentence part has no allowance. `EDIT THIS NOTE IF YOUR OWN
+READING OF THE TARGET IS DIFFERENT.`
+
+
+**How I scored the tries:** I ran `python run_eval.py --label before` (cache off,
+five tries per scenario), then drafted the PASS/FAIL cells with
+`score_results.py` and checked each one by hand against the raw results file.
+`PASTE HOW MANY VERDICTS YOU CHANGED BY HAND, IF ANY, AND WHY.`
 
 **Real output from one try**, pasted as text, naming the file and function
 that produced it:
 
 ```
+PASTE REAL OUTPUT HERE
+```
 
+<!-- ADDED — one block per criterion, from a single try, as text. -->
+
+**Criterion 1** — `agent.py::run_agent`, run by `run_eval.py::main`:
+
+```
+PASTE THE MATCHING-QUERY TRACE AND FIT CARD
+```
+
+**Criterion 2** — `agent.py::run_agent` and `agent.py::_no_results_message`:
+
+```
+PASTE THE IMPOSSIBLE-QUERY MESSAGE AND ITS SHORT TRACE
+```
+
+**Criterion 3** — trace lines from `agent.py::run_agent`:
+
+```
+PASTE THE FIRST-RESULT ID, SELECTED ID, suggest_outfit ID AND create_fit_card ID LINES
+```
+
+**Criterion 4** — `tools.py::create_fit_card`:
+
+```
+PASTE THE FIVE FIT CARDS FROM ONE ROUND
+```
+
+**Criterion 5** — `tools.py::search_listings`, called through `mcp_server.py`:
+
+```
+PASTE ONE QUERY AND THE PRICES RETURNED
 ```
 
 ---
@@ -259,7 +315,7 @@ that produced it:
 $ python app.py ask 'vintage graphic tee under $30' --trace
 
 PASTE YOUR REAL TRACE HERE. It should show, in order:
-[1] search_listings (via MCP)
+[1] search_listings (via MCP)   (with "first result id=..." on its note line)
 [2] branch
 [3] suggest_outfit
 [4] create_fit_card
@@ -289,7 +345,7 @@ replaced the direct call `search_listings(...)` with
 handler. I compared the ids returned by the direct call and by the MCP call for
 the same query: `PASTE THE TWO ID LISTS HERE, AND SAY WHETHER THEY MATCHED`.
 
-<!-- ADDED -->
+
 ### Failure Modes (Milestone 2)
 
 I triggered each failure one at a time. The messages below are what the agent
