@@ -162,27 +162,29 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I gave Claude `agent.py`, `generate.py` and the Milestone 2 brief and asked for the failure handlers and trace calls.
+- *What came back:* `generate.py` already raised `ModelUnavailable` with a readable message, but nothing in `run_agent` caught it, so the user would have seen a raw `ModelUnavailable: ...` exception line. Claude added handlers in the `suggest` and `card` steps that set `session["error"]`, plus a `trace.step()` call per step with the MCP search labelled `search_listings (via MCP)`.
+- *What I changed:* `EDIT: say what you changed from Claude's version, for example the wording of the error messages, after you read them as a user who can't see the code.`
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Claude for a scorer to draft the PASS/FAIL cells from `results/run_..._before.md`.
+- *What came back:* `score_results.py`. Its criterion 2 check rejected any results block containing the word `suggest_outfit`, but the branch step's trace note says "stopping before suggest_outfit", so every try would have failed.
+- *What I changed:* I caught this by comparing the scorer's output with the raw results file, and changed the check to look for the trace step line `[n] suggest_outfit` only. `EDIT IF THIS IS NOT WHAT HAPPENED, AND ADD ANY OTHER VERDICT YOU CHANGED BY HAND.`
 
 <!-- Unit 4 note: if you used score_results.py (written by Claude) to
      draft the PASS/FAIL cells, say so here, and say what you checked by hand
      and whether you changed any of its verdicts. -->
 
-**Unit 4 note:** Claude wrote `score_results.py` to draft the PASS/FAIL cells. Its
-first version's criterion 2 check rejected any results block containing the
-word `suggest_outfit`, but the branch step's note says "stopping before
-suggest_outfit", so every try would have failed. I caught it by comparing the
-scorer's output with the raw results file, and changed the check to look for the
-trace step line `[n] suggest_outfit` only. `EDIT THIS IF YOU DID NOT SEE THIS, AND
-ADD ANY OTHER VERDICT YOU CHANGED BY HAND.`
+**Unit 4 note:** Claude wrote `score_results.py` to draft the PASS/FAIL cells. I
+checked each cell against the raw results file and `PASTE: how many verdicts you
+changed by hand, and which`. The criterion 2 bug is described in Moment 2.
+
+**Unit 4, Milestone 5 note:** I asked Claude for a change to the `create_fit_card`
+prompt after my diagnosis pointed at the model's output. It proposed fixing the
+length at exactly 3 sentences, banning stock openers, and assigning the price and
+platform to sentence 2. `EDIT: SAY WHAT YOU CHECKED, WHAT YOU KEPT, AND WHAT YOU
+CHANGED FROM CLAUDE'S VERSION.`
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
@@ -352,7 +354,7 @@ behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
-<!-- Edit the last sentence to match what you actually saw. -->
+<!-- Edit the last sentences to match what you actually saw. -->
 In `mcp_server.py` I registered `search_listings` with `@mcp.tool()`, with typed
 inputs (`description: str`, `size: str | None`, `max_price: float | None`) and a
 description that names units and the empty case. In `agent.py::run_agent` I
@@ -360,6 +362,12 @@ replaced the direct call `search_listings(...)` with
 `mcp_client.call_tool("search_listings", {...})` and added an `MCPError`
 handler. I compared the ids returned by the direct call and by the MCP call for
 the same query: `PASTE THE TWO ID LISTS HERE, AND SAY WHETHER THEY MATCHED`.
+
+**Did anything behave differently after the move?** `EDIT. For example: "The
+results were identical. The visible difference was speed: every call_tool starts
+the server as a separate process, so each search took noticeably longer than the
+direct call." Or, if something did differ, say what, and what that showed about
+what the tool was really returning.`
 
 ### Failure Modes (Milestone 2)
 
@@ -405,26 +413,69 @@ the `suggest` and `card` steps of `agent.py::run_agent`. Each one sets
 
      `python run_eval.py --label after` -->
 
-**What I changed:**
+**What I changed:** One prompt, in `tools.py::create_fit_card`. Nothing else in
+the repo changed between the before run and the after run (`scenarios.py`,
+`agent.py` and `score_results.py` are identical).
 
-**Which failure it was meant to fix:**
+Before, the prompt asked for "2 to 4 sentences", asked for the item, price and
+platform "once each", and gave no instruction about how to open:
+
+```
+Write a caption of 2 to 4 sentences about this thrift find.
+...
+- Mention the item, the exact price ({price}), and the platform ({platform}) once each.
+- Be specific about the vibe.
+- Do not use hashtags or a list. Plain sentences only.
+```
+
+After, it asks for exactly 3 sentences, bans stock openers, and assigns each
+required detail to a sentence:
+
+```
+Write a caption of exactly 3 sentences about this thrift find.
+...
+- Sentence 1 must open with a specific detail about how this item looks or feels
+  (its colour, era, fabric or cut). Do not open with 'Just found', 'Found',
+  'Thrifted', 'Obsessed' or the price.
+- Sentence 2 must contain the exact price ({price}) and the platform name
+  ({platform}), each written once, exactly as given.
+- Sentence 3 must say how to wear it, using the outfit idea.
+- Write exactly 3 sentences, each ending in a period, question mark or
+  exclamation mark. Do not use a period anywhere else, so no abbreviations.
+- One paragraph. No hashtags, no lists, no line breaks.
+```
+
+**Which failure it was meant to fix:** `FILL IN FROM YOUR DIAGNOSIS: the
+criterion number, the try numbers, and the mechanism. For example: "Criterion 4
+missed in tries 2 and 4. The cards for the sneakers listing ran to 5 sentences
+and two cards opened with 'Just found'. Place: the model's output. The prompt
+allowed a range of lengths and left the opening free, so at temperature 0.9 the
+model drifted." EDIT TO MATCH WHAT YOU ACTUALLY SAW.`
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 |  |  |  |  |  |  |
+| 2. An impossible query stops before the second tool | 5 of 5 |  |  |  |  |  |  |
+| 3. The item the search found is the item the next tool received | 5 of 5 |  |  |  |  |  |  |
+| 4. The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds |  |  |  |  |  |  |
+| 5. A price ceiling is always respected | 5 of 5 |  |  |  |  |  |  |
 
-**Did it help, and how do I know:**
+`PASTE THE TABLE FROM python score_results.py results/run_<timestamp>_after.md,
+CHECKED BY HAND AGAINST THE RAW RESULTS FILE.`
+
+**Did it help, and how do I know:** `EDIT. Compare the same row before and
+after, with the numbers, for example: "Criterion 4 went from 2/5 to 5/5. In the
+before run, tries 2 and 4 failed on sentence count and a shared opener. In the
+after run all five rounds had 3 sentences, with the price and platform in
+sentence 2." Then check the other rows: did anything get worse? If a different
+criterion changed (for example criterion 1 from a rate-limit failure), say that
+the change is not attributable to the prompt. If the change made things worse,
+or did nothing, say that.`
 
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->
-
-
 
 ---
 
@@ -434,7 +485,29 @@ the `suggest` and `card` steps of `agent.py::run_agent`. Each one sets
      you did. "I ran out of time" is fine if it's true. Pretending nothing is
      left is not. -->
 
+`DELETE THESE INSTRUCTIONS. Write one entry per criterion that is still MISSED in
+the after run, using your real numbers. If a criterion was missed before and is
+now met, it doesn't need an entry. If nothing is missed, use the last entry.`
 
+**Criterion N (x/5 after the change).** `What still fails, with the try numbers.`
+What I would do next: `one concrete change, naming the file and function.` Why I
+stopped here: `an honest reason. For example: "That is a second change, and I
+wanted one measured change", or "I ran out of time" if it's true.`
+
+**Criterion N (x/5 after the change).** `Repeat for each remaining miss. If two
+misses share a cause, say so and write them as one entry.`
+
+**If nothing is still missed:** `Say so plainly, then name what the five tries
+cannot show. For example: criteria 2, 3 and 5 are deterministic, so five tries
+add nothing beyond one; the sentence counter in score_results.py splits on
+". ! ?" and could miscount an abbreviation; criterion 4's allowance of 4 of 5
+cards per round may be too generous; or the 40-listing data set only covers a
+few phrasings of each query.`
+
+**Known limits I did not test:** `EDIT OR DELETE. For example: every call_tool
+starts a new server process, which is slow; search_listings is keyword matching,
+so a synonym ("sneakers" for "trainers") will miss a listing that exists; only
+search_listings went through MCP.`
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
