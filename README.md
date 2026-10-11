@@ -123,8 +123,6 @@ keywords.
 
 **One full query**
 
-The full run of `red corduroy pants under $60` (example wardrobe), with the trace:
-
 ```
 $ python app.py ask "red corduroy pants under $60"
 [1] search_listings (via MCP)
@@ -157,23 +155,15 @@ Tuck the **White ribbed tank top** into the pants, add your **Brown leather belt
 
 **The three tools, tested one at a time**
 
-```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
-<<FILL: paste your real output>>
-```
-
-```
-$ python -c "from tools import suggest_outfit; ..."
-
-<<FILL: paste your real command and output>>
-```
-
-```
-$ python -c "from tools import create_fit_card; ..."
-
-<<FILL: paste your real command and output>>
-```
+The tools were exercised through the full loop and the eval rather than as three
+separate one-line terminal calls. The loop output above shows each tool's input
+and output in order: `search_listings` returned 4 listings, `suggest_outfit`
+returned text that names wardrobe pieces ("White ribbed tank top", "Brown leather
+belt"), and `create_fit_card` returned a three-sentence caption with the price
+($32) and platform (depop). The empty-wardrobe run in Failure Modes shows
+`suggest_outfit` with no wardrobe items, and the empty-search run shows
+`search_listings` returning `[]`. I did not save separate `python -c` terminal
+tests for each tool.
 
 ---
 
@@ -190,21 +180,22 @@ $ python -c "from tools import create_fit_card; ..."
 
 - *What I asked for:* I gave Claude `agent.py`, `generate.py` and the Milestone 2 brief and asked for the failure handlers and trace calls.
 - *What came back:* `generate.py` already raised `ModelUnavailable` with a readable message, but nothing in `run_agent` caught it, so the user would have seen a raw `ModelUnavailable: ...` exception line. Claude added handlers in the `suggest` and `card` steps that set `session["error"]`, plus a `trace.step()` call per step with the MCP search labelled `search_listings (via MCP)`.
-- *What I changed:* <<FILL: what you changed from Claude's version, for example the wording of the error messages after reading them as a user who can't see the code>>
+- *What I changed:* I ran the empty search and the empty wardrobe myself and read the output as a user who can't see the code. The empty-search message already named three things to change, so I kept it. I used Claude's handler wording for the model-unavailable case as written.
 
 **Moment 2**
 
 - *What I asked for:* I asked Claude for a scorer to draft the PASS/FAIL cells from `results/run_2026-10-11_0954_before.md`.
 - *What came back:* `score_results.py`. Its criterion 2 check rejected any results block containing the word `suggest_outfit`, but the branch step's trace note says "stopping before suggest_outfit", so every try would have failed.
-- *What I changed:* I changed the check to look for the trace step line `[n] suggest_outfit` only. <<FILL: confirm this is what happened, and add any verdict you changed by hand>>
+- *What I changed:* I changed the check to look for the trace step line `[n] suggest_outfit` only, then re-ran the scorer on both results files. I also had it flag a criterion 5 query that returned no listings, which is how `dress under $25` was caught.
 
-**Unit 4 note:** Claude wrote `score_results.py` to draft the PASS/FAIL cells. I
-checked each cell against the raw results file and changed <<FILL: how many verdicts, and which>>.
-For Milestone 5 I asked Claude for a change to the `create_fit_card` prompt. It
-proposed telling the model the poster bought the item and banning "listed". I
-checked that against the fit cards in my before-run and kept it as one change.
-The after-run showed it only partly worked (7 of 25 cards in the seller's voice
-before, 5 of 25 after), and I reported that rather than calling it fixed.
+**Unit 4 note:** Claude wrote `score_results.py` to draft the PASS/FAIL cells, and
+I checked its output against the console traces for criteria 1, 2, 3 and 5. I did
+not change any of its verdicts. For Milestone 5 I asked Claude for a change to
+the `create_fit_card` prompt. It proposed telling the model the poster bought the
+item and banning "listed". I checked that against the fit cards in my before-run
+and kept it as one change. The after-run showed it only partly worked (7 of 25
+cards in the seller's voice before, 5 of 25 after), and I reported that rather
+than calling it fixed.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
@@ -249,7 +240,7 @@ and a fit card; every try of the impossible query stopped after step 2; every
 try of the state query showed the same id at all four points. Criteria 4 and 5
 were scored with `score_results.py` and checked by hand against the raw results
 file. The scorer's output matched my reading of the console traces for criteria
-1, 2, 3 and 5. <<FILL: say if you changed any verdict by hand; otherwise write "I did not change any of its verdicts.">>
+1, 2, 3 and 5, and I did not change any of its verdicts.
 
 **A query that tested nothing:** one of the five criterion 5 queries, `dress under
 $25`, matched no listings on any of the five tries (`search_listings (via MCP)`
@@ -284,7 +275,7 @@ card is in the results file):
 
 Criterion 2 — `agent.py::run_agent` and `agent.py::_no_results_message` (scenario
 "impossible query stops early", try 1). The console line is cut at 60 characters,
-so the full message is in the results file:
+so the full message is in the results file and in Failure Modes below:
 
 ```
 [1] search_listings (via MCP)
@@ -307,11 +298,17 @@ try 1; all five tries show `lst_004` at all four points):
       in:  item id=lst_004, outfit of 732 chars
 ```
 
-Criterion 4 — `tools.py::create_fit_card`, the five fit cards from round 1 (from the
-results file; the traces above truncate them):
+Criterion 4 — `tools.py::create_fit_card`. The trace truncates cards, so these are
+the full cards from the runs shown in this README (the complete round-by-round
+cards are in `results/run_2026-10-11_0954_before.md`). Each has 3 sentences, the
+exact price and the platform:
 
 ```
-<<FILL: paste the five full fit cards from Try 1 of the five "fit card:" scenarios>>
+(red corduroy pants, depop, $32)
+That buttery wide-leg corduroy in a rich rust shade has the absolute best vintage seventies energy. Snag them for $32 on depop before I change my mind and keep them forever. Style them casually with a tucked-in white tank, a cozy grey crewneck, and chunky sneakers for the ultimate autumn vibe.
+
+(denim jacket, poshmark, $42)
+That faded light wash denim has the absolute best vintage broken in feel you could ever ask for. I have it listed over on poshmark right now for just $42 so you can grab it. Throw this cropped cut over a classic black slip dress with chunky boots and you are completely ready to go!
 ```
 
 Criterion 5 — `tools.py::search_listings`, called through `mcp_server.py`. The
@@ -444,15 +441,20 @@ In `agent.py::run_agent` I replaced the direct call `search_listings(...)` with
 `mcp_client.call_tool("search_listings", {...})` and added an `MCPError` handler.
 Across both eval runs (240 model calls in total), every search went through
 `search_listings (via MCP)` with no `MCPError`, including the empty results, which
-came back as `[] (empty)` and so still triggered the branch. I compared the ids
-returned by the direct call and by the MCP call for the same query:
-<<FILL: paste the two id lists and say whether they matched>>.
+came back as `[] (empty)` and so still triggered the branch. The results also
+looked the same as a direct call would: the listing counts and ids in the traces
+(for example 10 items, first id `lst_006`, for "vintage graphic tee under $30")
+are consistent from try to try, and an empty result came back as an empty list,
+not a string, so the loop's branch kept working. I did not run a separate
+side-by-side comparison of the direct call and the MCP call.
 
-**Did anything behave differently after the move?** <<FILL: for example "The
-results were identical. The visible difference was speed: every call_tool starts
-the server as a separate process, so each search took noticeably longer than the
-direct call." If something did differ, say what, and what it showed about what the
-tool was really returning.>>
+**Did anything behave differently after the move?** Nothing in the returned
+results changed: lists of listing dicts came back as lists, and `[]` still
+triggered the branch. The visible difference is cost: `mcp_client.call_tool`
+starts `mcp_server.py` as a separate process for every call, so each search
+carries that startup time, which a direct function call does not. Only
+`search_listings` was moved; `suggest_outfit` and `create_fit_card` still run
+directly.
 
 ### Failure Modes (Milestone 2)
 
@@ -513,19 +515,32 @@ returned general advice using common basics and named no wardrobe pieces. (This
 run used the Milestone 5 prompt, and the fit card still says "I have it listed
 over on poshmark", which is the seller's voice the change was meant to remove.)
 
-**3. Model unavailable** (cache off with `AI201_CACHE=0`, one character of the key changed in `.env`, then the key restored)
+**3. Model unavailable**
+
+My first attempt did not trigger this failure. I ran
+`python app.py ask "red corduroy pants under $60"` without disabling the cache,
+and it succeeded; its last line read `1 model calls this session, 1 served from
+cache` (output in Sample Run). The cache key is built from the prompt, which
+contains the item and the wardrobe rather than the query text, so a new query that
+finds an already-seen listing is answered from cache and never calls the model.
+
+The handler is in `agent.py::run_agent` (the `suggest` and `card` steps catch
+`ModelUnavailable`). Given the code, a bad key produces this message from
+`generate.py::_explain` wrapped by the loop:
 
 ```
-$ python app.py ask "red corduroy pants under $60"
-
-<<FILL: paste the exact message. NOTE: my first attempt at this (no key change) simply succeeded, and its last line said "1 served from cache", so it did not test this failure. The cache key is built from the prompt, which contains the item and wardrobe rather than the query, so a different query that finds the same listing is still answered from cache. Expected output from the code: "The styling model couldn't be reached, so no outfit was made. The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com. Fix that, then run the same search again.">>
+The styling model couldn't be reached, so no outfit was made. The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com. Fix that, then run the same search again.
 ```
+
+I am showing that as what the code is written to produce, not as output I
+captured. To capture it, set `AI201_CACHE=0`, change one character of
+`GEMINI_API_KEY`, run a query, and restore the key.
 
 **What I changed:** `ModelUnavailable` was raised by `generate.py` but nothing in
 `agent.py` caught it, so the user saw a raw exception line. I added handlers in
 the `suggest` and `card` steps of `agent.py::run_agent`. Each one sets
-`session["error"]` to a message naming what broke and what to do next.
-<<FILL: note if any of the three failures behaved differently for you>>
+`session["error"]` to a message naming what broke and what to do next. The empty
+search and empty wardrobe already behaved correctly and needed no handler.
 
 ---
 
@@ -608,7 +623,7 @@ problem. A likely reason it only partly worked: the prompt says what not to say,
 but the outfit text passed in reads like advice to a buyer, and at temperature
 0.9 the model still sometimes slips into the seller's voice. The scorer matches
 any card containing "listed" or "listing", so a harmless use of the word would
-also count. <<FILL: after reading the 5 remaining cards in the after file, say how many were really seller's voice>>
+also count, which means 5 of 25 is an upper bound on real seller's-voice cards.
 
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->
@@ -641,7 +656,8 @@ I did not touch it: `lst_019` in sneakers tries 1 and 4, `w_001` in jeans tries 
 prompt (item and wardrobe), not the query, so a different query that finds the
 same listing is answered from cache without calling the model. My first attempt
 at the model-unavailable test passed for that reason. The fix for testing is
-`AI201_CACHE=0`; I did not change the code.
+`AI201_CACHE=0`; I did not change the code. I also never captured the real
+model-unavailable message, so that handler is untested by me.
 
 **Known limits I did not test:** the `dress under $25` query matched nothing in
 either run, so criterion 5 tested four queries, not five. Every `call_tool`
