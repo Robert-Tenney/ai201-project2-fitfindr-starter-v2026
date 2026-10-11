@@ -168,23 +168,15 @@ PASTE YOUR REAL COMMAND AND OUTPUT HERE
 
 **Moment 2**
 
-- *What I asked for:* I asked Claude for a scorer to draft the PASS/FAIL cells from `results/run_..._before.md`.
+- *What I asked for:* I asked Claude for a scorer to draft the PASS/FAIL cells from `results/run_2026-10-11_0954_before.md`.
 - *What came back:* `score_results.py`. Its criterion 2 check rejected any results block containing the word `suggest_outfit`, but the branch step's trace note says "stopping before suggest_outfit", so every try would have failed.
 - *What I changed:* I caught this by comparing the scorer's output with the raw results file, and changed the check to look for the trace step line `[n] suggest_outfit` only. `EDIT IF THIS IS NOT WHAT HAPPENED, AND ADD ANY OTHER VERDICT YOU CHANGED BY HAND.`
-
-<!-- Unit 4 note: if you used score_results.py (written by Claude) to
-     draft the PASS/FAIL cells, say so here, and say what you checked by hand
-     and whether you changed any of its verdicts. -->
 
 **Unit 4 note:** Claude wrote `score_results.py` to draft the PASS/FAIL cells. I
 checked each cell against the raw results file and `PASTE: how many verdicts you
 changed by hand, and which`. The criterion 2 bug is described in Moment 2.
 
-**Unit 4, Milestone 5 note:** I asked Claude for a change to the `create_fit_card`
-prompt after my diagnosis pointed at the model's output. It proposed fixing the
-length at exactly 3 sentences, banning stock openers, and assigning the price and
-platform to sentence 2. `EDIT: SAY WHAT YOU CHECKED, WHAT YOU KEPT, AND WHAT YOU
-CHANGED FROM CLAUDE'S VERSION.`
+**Unit 4, Milestone 5 note:** `FILL IN AFTER MILESTONE 5. Say what you asked Claude for, what came back, what you checked, what you kept, and what you changed from its version.`
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
@@ -204,17 +196,16 @@ CHANGED FROM CLAUDE'S VERSION.`
      `python run_eval.py --label before` runs everything and writes the table
      into results/. Paste it here and fill in the verdicts. -->
 
-<!-- The criterion names and targets come from criteria.md. Replace the
-     blank Try and Verdict cells with PASS / FAIL and e.g. MET (5/5) from your
-     own reading of results/run_<timestamp>_before.md. -->
+Run: `python run_eval.py --label before` on 2026-10-11 09:54, cache off, five tries
+per scenario, 120 model calls. Results file: `results/run_2026-10-11_0954_before.md`.
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1. A matching query completes all three tools | 4 of 5 |  |  |  |  |  |  |
-| 2. An impossible query stops before the second tool | 5 of 5 |  |  |  |  |  |  |
-| 3. The item the search found is the item the next tool received | 5 of 5 |  |  |  |  |  |  |
-| 4. The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds* |  |  |  |  |  |  |
-| 5. A price ceiling is always respected | 5 of 5 |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. The item the search found is the item the next tool received | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds* | `FROM SCORER` | `FROM SCORER` | `FROM SCORER` | `FROM SCORER` | `FROM SCORER` | `MET or MISSED (x/5)` |
+| 5. A price ceiling is always respected | 5 of 5 | `FROM SCORER` | `FROM SCORER` | `FROM SCORER` | `FROM SCORER` | `FROM SCORER` | `MET or MISSED (x/5)` |
 
 \*Criterion 4 as written in `criteria.md` asks for at least 4 of 5 cards well
 formed (2 to 4 sentences, exact price, platform name) and no two sharing a first
@@ -225,46 +216,82 @@ criterion as written. I read the row against 5 of 5 rounds because the
 no-shared-first-sentence part has no allowance. `EDIT THIS NOTE IF YOUR OWN
 READING OF THE TARGET IS DIFFERENT.`
 
-**How I scored the tries:** I ran `python run_eval.py --label before` (cache off,
-five tries per scenario), then drafted the PASS/FAIL cells with
-`score_results.py` and checked each one by hand against the raw results file.
-`PASTE HOW MANY VERDICTS YOU CHANGED BY HAND, IF ANY, AND WHY.`
+**How I scored the tries:** Criteria 1, 2 and 3 are read directly from the trace
+printed by `run_eval.py`: every try of the matching query printed all four steps
+and a fit card; every try of the impossible query stopped after step 2; every
+try of the state query showed the same id at all four points. Criteria 4 and 5
+were drafted with `score_results.py` and checked by hand against the raw results
+file. `PASTE HOW MANY VERDICTS YOU CHANGED BY HAND, IF ANY, AND WHY.`
+
+**A query that tested nothing:** one of the five criterion 5 queries, `dress under
+$25`, matched no listings on any of the five tries (`search_listings (via MCP)`
+returned `[] (empty)` and the loop stopped at the branch). An empty result cannot
+exceed a price ceiling, so that query passes without testing the filter. Criterion
+5 was therefore tested by four real queries, not five. `EDIT: say whether you
+swapped the query and re-ran (and name the second results file), or kept this run
+and accepted four.`
 
 **Real output from one try**, pasted as text, naming the file and function
 that produced it:
 
-```
-PASTE REAL OUTPUT HERE
-```
-
-**Criterion 1** — `agent.py::run_agent`, run by `run_eval.py::main`:
+Criterion 1 — `agent.py::run_agent`, run by `run_eval.py::main` (scenario "matching
+query completes", try 1; the fit card text is truncated in the trace, so the full
+card is in the results file):
 
 ```
-PASTE THE MATCHING-QUERY TRACE AND FIT CARD
+[1] search_listings (via MCP)
+      in:  description='vintage graphic tee', size=None, max_price=30.0
+      out: 10 items: Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey, Y2K Baby Tee — Butterfly Print … +7 more
+      →    first result id=lst_006
+[2] branch
+      →    results found, selected id=lst_006
+[3] suggest_outfit
+      in:  item id=lst_006, 10 wardrobe items
+      out: Hey! That bootleg graphic tee is an absolute score for a grunge-streetwear vibe. Since it has a slightly boxy …
+[4] create_fit_card
+      in:  item id=lst_006, outfit of 934 chars
+      out: This faded black jersey cotton tee has the best boxy 2003 tour bootleg cut imaginable! Snagged it on depop for…
+  try 1: completed — fit card 261 chars
 ```
 
-**Criterion 2** — `agent.py::run_agent` and `agent.py::_no_results_message`:
+Criterion 2 — `agent.py::run_agent` and `agent.py::_no_results_message` (scenario
+"impossible query stops early", try 1). The console line is cut at 60 characters,
+so the full message is in the results file:
 
 ```
-PASTE THE IMPOSSIBLE-QUERY MESSAGE AND ITS SHORT TRACE
+[1] search_listings (via MCP)
+      in:  description='designer ballgown', size='XXS', max_price=5.0
+      out: [] (empty)
+[2] branch
+      →    search_results is empty, stopping before suggest_outfit
+  try 1: stopped early — No listings matched 'designer ballgown' in size XXS under $5
 ```
 
-**Criterion 3** — trace lines from `agent.py::run_agent`:
+Criterion 3 — trace lines from `agent.py::run_agent` (scenario "state: ids match",
+try 1; all five tries show `lst_004` at all four points):
 
 ```
-PASTE THE FIRST-RESULT ID, SELECTED ID, suggest_outfit ID AND create_fit_card ID LINES
+      →    first result id=lst_004
+      →    results found, selected id=lst_004
+[3] suggest_outfit
+      in:  item id=lst_004, 10 wardrobe items
+[4] create_fit_card
+      in:  item id=lst_004, outfit of 732 chars
 ```
 
-**Criterion 4** — `tools.py::create_fit_card`:
+Criterion 4 — `tools.py::create_fit_card`:
 
 ```
-PASTE THE FIVE FIT CARDS FROM ONE ROUND
+PASTE THE FIVE FULL FIT CARDS FROM ONE ROUND, FROM THE RESULTS FILE (the traces above truncate them)
 ```
 
-**Criterion 5** — `tools.py::search_listings`, called through `mcp_server.py`:
+Criterion 5 — `tools.py::search_listings`, called through `mcp_server.py`. The
+trace shows the query and how many listings came back, but not their prices.
+Paste the `selected_item` line (it includes the price) for each of the four
+queries that matched, from the results file:
 
 ```
-PASTE ONE QUERY AND THE PRICES RETURNED
+PASTE THE QUERY, THE CEILING, AND THE PRICE OF THE SELECTED ITEM FOR EACH QUERY. For example: "jacket under $40" -> Shacket — Olive Canvas, $33
 ```
 
 ---
@@ -289,15 +316,18 @@ PASTE ONE QUERY AND THE PRICES RETURNED
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 | A matching query completes all three tools | 4 of 5 | `MET or MISSED (x/5)` | `e.g. "x PASS cells against a 4 of 5 target"` |
-| 2 | An impossible query stops before the second tool | 5 of 5 | `MET or MISSED (x/5)` | `...` |
-| 3 | The item the search found is the item the next tool received | 5 of 5 | `MET or MISSED (x/5)` | `...` |
-| 4 | The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds | `MET or MISSED (x/5)` | `...` |
-| 5 | A price ceiling is always respected | 5 of 5 | `MET or MISSED (x/5)` | `...` |
+| 1 | A matching query completes all three tools | 4 of 5 | MET (5/5) | 5 PASS cells against a 4 of 5 target. All five tries printed all four trace steps and ended with a fit card. |
+| 2 | An impossible query stops before the second tool | 5 of 5 | MET (5/5) | 5 PASS cells against a 5 of 5 target. Every try's trace ends at step 2, the branch, and shows no `suggest_outfit` step. |
+| 3 | The item the search found is the item the next tool received | 5 of 5 | MET (5/5) | 5 PASS cells against a 5 of 5 target. In every try `lst_004` appears as the first result, the selected item, and the input to both later tools. |
+| 4 | The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds | `MET or MISSED (x/5)` | `FROM SCORER, CHECKED AGAINST THE FULL CARDS` |
+| 5 | A price ceiling is always respected | 5 of 5 | `MET or MISSED (x/5)` | `FROM SCORER. Say that one of the five queries returned no listings, so only four tested the filter.` |
 
 **Diagnoses**
 
-`DELETE THIS TEMPLATE AND WRITE ONE ENTRY PER MISS, FROM YOUR OWN RESULTS.`
+Criteria 1, 2 and 3 were met, so none needs a diagnosis. Criterion 1's target
+allowed for rate-limit failures and keyword misses. Rate-limit pauses did occur
+(`[rate limit] 15 requests used this minute. Waiting 36s`) in several tries,
+and none of them ended a run, so that risk did not turn into a failure here.
 
 **Criterion N — MISSED (x/5).** Place: `tool / loop branch / session / model output`.
 Mechanism: `what happened, with evidence from the results file, such as the try
@@ -307,11 +337,29 @@ follows from my code or prompt, naming the file and function.`
 **Pattern:** `which misses share a cause, or "no pattern, the misses were independent"`.
 
 **If I missed nothing:** `say so, then name the criterion whose target was too
-easy and how I would tighten it.`
+easy and how I would tighten it. Candidates: criterion 5 as written cannot fail
+for a query that matches nothing, as `dress under $25` showed; criteria 2, 3 and 5
+are deterministic, so five tries add nothing beyond one.`
 
-**Note on criterion 5:** `The check is a deterministic filter, so all five tries
-give the same result. I also confirmed each of the five queries returned at least
-one listing, so the check tested something.` `EDIT IF NOT TRUE.`
+**Things I noticed in the output that the criteria did not measure** (read the
+full text in the results file to confirm each before keeping it):
+
+- `suggest_outfit` sometimes puts internal ids into text meant for the user. The
+  sneakers tries 1 and 5 print "(`lst_019`)", the denim jacket try 4 mentions
+  "(`lst_007`)", and the jeans try 3 mentions "(`w_001`)". Place: the model's
+  output, caused by `_describe` in `tools.py`, which passes every field including
+  `id` into the prompt.
+- Several fit cards say "I just listed it on depop" or "I have it listed on", which
+  reads as if the poster is selling the item. Place: the model's output. The prompt
+  gives the platform but doesn't say the poster bought the item.
+- The fit card openers repeat across tries of the same item (for example "That
+  faded black cotton has the most unreal..." in graphic tee tries 2, 3 and 4).
+  Criterion 4 only compares first sentences across five different items, so this
+  does not count against it.
+
+**Note on criterion 5:** The check is a deterministic filter, so all five tries
+give the same result. One of the five queries (`dress under $25`) returned no
+listings, so only four tested the filter. `EDIT IF YOU RE-RAN WITH A DIFFERENT QUERY.`
 
 ---
 
@@ -327,26 +375,39 @@ one listing, so the check tested something.` `EDIT IF NOT TRUE.`
      the same length, your branch isn't working — and this is the fastest way
      anyone will ever find that out. -->
 
+These two traces are from `run_eval.py` (try 1 of each scenario), which prints the
+same `trace.step()` lines as `python app.py ask '...' --trace`. The empty-search
+trace is two steps; the happy path is four.
+
 **Happy path**
 
 ```
-$ python app.py ask 'vintage graphic tee under $30' --trace
+$ python run_eval.py --label before   (scenario: matching query completes, try 1)
 
-PASTE YOUR REAL TRACE HERE. It should show, in order:
-[1] search_listings (via MCP)   (with "first result id=..." on its note line)
+[1] search_listings (via MCP)
+      in:  description='vintage graphic tee', size=None, max_price=30.0
+      out: 10 items: Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey, Y2K Baby Tee — Butterfly Print … +7 more
+      →    first result id=lst_006
 [2] branch
+      →    results found, selected id=lst_006
 [3] suggest_outfit
+      in:  item id=lst_006, 10 wardrobe items
+      out: Hey! That bootleg graphic tee is an absolute score for a grunge-streetwear vibe. Since it has a slightly boxy …
 [4] create_fit_card
+      in:  item id=lst_006, outfit of 934 chars
+      out: This faded black jersey cotton tee has the best boxy 2003 tour bootleg cut imaginable! Snagged it on depop for…
 ```
 
 **Empty search**
 
 ```
-$ python app.py ask 'designer ballgown size XXS under $5' --trace
+$ python run_eval.py --label before   (scenario: impossible query stops early, try 1)
 
-PASTE YOUR REAL TRACE HERE. It should stop after:
 [1] search_listings (via MCP)
+      in:  description='designer ballgown', size='XXS', max_price=5.0
+      out: [] (empty)
 [2] branch
+      →    search_results is empty, stopping before suggest_outfit
 ```
 
 **On the MCP move:** <!-- what changed in your code, and whether anything
@@ -354,14 +415,16 @@ behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
-<!-- Edit the last sentences to match what you actually saw. -->
 In `mcp_server.py` I registered `search_listings` with `@mcp.tool()`, with typed
 inputs (`description: str`, `size: str | None`, `max_price: float | None`) and a
 description that names units and the empty case. In `agent.py::run_agent` I
 replaced the direct call `search_listings(...)` with
 `mcp_client.call_tool("search_listings", {...})` and added an `MCPError`
-handler. I compared the ids returned by the direct call and by the MCP call for
-the same query: `PASTE THE TWO ID LISTS HERE, AND SAY WHETHER THEY MATCHED`.
+handler. The eval run shows the MCP call working end to end: every search in the
+run went through `search_listings (via MCP)` with no `MCPError`, including the
+empty results, which came back as `[] (empty)` and so still triggered the branch.
+I compared the ids returned by the direct call and by the MCP call for the same
+query: `PASTE THE TWO ID LISTS HERE, AND SAY WHETHER THEY MATCHED`.
 
 **Did anything behave differently after the move?** `EDIT. For example: "The
 results were identical. The visible difference was speed: every call_tool starts
@@ -379,10 +442,23 @@ printed.
 ```
 $ python app.py ask 'designer ballgown size XXS under $5'
 
-PASTE THE EXACT MESSAGE HERE
+PASTE THE EXACT MESSAGE HERE (it begins: No listings matched 'designer ballgown' in size XXS under $5. You could ...)
 ```
 
 **2. Empty wardrobe**
+
+The eval scenario "empty wardrobe" (`denim jacket under $50`, empty wardrobe) completed
+on all five tries with no crash and no empty string. Try 1:
+
+```
+[3] suggest_outfit
+      in:  item id=lst_007, 0 wardrobe items
+      out: Hey friend! This Wrangler denim jacket is a timeless staple. Here are two easy ways to style it using your eve…
+[4] create_fit_card
+      in:  item id=lst_007, outfit of 567 chars
+      out: That perfectly worn-in light wash denim and cropped cut give this Wrangler jacket the ultimate vintage feel. G…
+  try 1: completed — fit card 279 chars
+```
 
 ```
 $ python app.py ask 'denim jacket under $50' --empty-wardrobe
@@ -413,44 +489,14 @@ the `suggest` and `card` steps of `agent.py::run_agent`. Each one sets
 
      `python run_eval.py --label after` -->
 
-**What I changed:** One prompt, in `tools.py::create_fit_card`. Nothing else in
-the repo changed between the before run and the after run (`scenarios.py`,
-`agent.py` and `score_results.py` are identical).
+`FILL IN AFTER MILESTONE 5. Choose the one change your diagnosis points at. If
+criterion 4 missed, the candidate is the create_fit_card prompt in tools.py. If it
+did not miss, the observations above suggest a different single change, such as
+removing id fields from what _describe passes to the model. Do not make both.`
 
-Before, the prompt asked for "2 to 4 sentences", asked for the item, price and
-platform "once each", and gave no instruction about how to open:
+**What I changed:**
 
-```
-Write a caption of 2 to 4 sentences about this thrift find.
-...
-- Mention the item, the exact price ({price}), and the platform ({platform}) once each.
-- Be specific about the vibe.
-- Do not use hashtags or a list. Plain sentences only.
-```
-
-After, it asks for exactly 3 sentences, bans stock openers, and assigns each
-required detail to a sentence:
-
-```
-Write a caption of exactly 3 sentences about this thrift find.
-...
-- Sentence 1 must open with a specific detail about how this item looks or feels
-  (its colour, era, fabric or cut). Do not open with 'Just found', 'Found',
-  'Thrifted', 'Obsessed' or the price.
-- Sentence 2 must contain the exact price ({price}) and the platform name
-  ({platform}), each written once, exactly as given.
-- Sentence 3 must say how to wear it, using the outfit idea.
-- Write exactly 3 sentences, each ending in a period, question mark or
-  exclamation mark. Do not use a period anywhere else, so no abbreviations.
-- One paragraph. No hashtags, no lists, no line breaks.
-```
-
-**Which failure it was meant to fix:** `FILL IN FROM YOUR DIAGNOSIS: the
-criterion number, the try numbers, and the mechanism. For example: "Criterion 4
-missed in tries 2 and 4. The cards for the sneakers listing ran to 5 sentences
-and two cards opened with 'Just found'. Place: the model's output. The prompt
-allowed a range of lengths and left the opening free, so at temperature 0.9 the
-model drifted." EDIT TO MATCH WHAT YOU ACTUALLY SAW.`
+**Which failure it was meant to fix:**
 
 ### Run Log — After
 
@@ -462,20 +508,12 @@ model drifted." EDIT TO MATCH WHAT YOU ACTUALLY SAW.`
 | 4. The fit card is a usable caption and doesn't repeat itself | 5 of 5 rounds |  |  |  |  |  |  |
 | 5. A price ceiling is always respected | 5 of 5 |  |  |  |  |  |  |
 
-`PASTE THE TABLE FROM python score_results.py results/run_<timestamp>_after.md,
-CHECKED BY HAND AGAINST THE RAW RESULTS FILE.`
-
-**Did it help, and how do I know:** `EDIT. Compare the same row before and
-after, with the numbers, for example: "Criterion 4 went from 2/5 to 5/5. In the
-before run, tries 2 and 4 failed on sentence count and a shared opener. In the
-after run all five rounds had 3 sentences, with the price and platform in
-sentence 2." Then check the other rows: did anything get worse? If a different
-criterion changed (for example criterion 1 from a rate-limit failure), say that
-the change is not attributable to the prompt. If the change made things worse,
-or did nothing, say that.`
+**Did it help, and how do I know:**
 
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->
+
+
 
 ---
 
@@ -485,29 +523,13 @@ or did nothing, say that.`
      you did. "I ran out of time" is fine if it's true. Pretending nothing is
      left is not. -->
 
-`DELETE THESE INSTRUCTIONS. Write one entry per criterion that is still MISSED in
-the after run, using your real numbers. If a criterion was missed before and is
-now met, it doesn't need an entry. If nothing is missed, use the last entry.`
+`FILL IN AFTER MILESTONE 5, FROM THE AFTER RUN.`
 
-**Criterion N (x/5 after the change).** `What still fails, with the try numbers.`
-What I would do next: `one concrete change, naming the file and function.` Why I
-stopped here: `an honest reason. For example: "That is a second change, and I
-wanted one measured change", or "I ran out of time" if it's true.`
-
-**Criterion N (x/5 after the change).** `Repeat for each remaining miss. If two
-misses share a cause, say so and write them as one entry.`
-
-**If nothing is still missed:** `Say so plainly, then name what the five tries
-cannot show. For example: criteria 2, 3 and 5 are deterministic, so five tries
-add nothing beyond one; the sentence counter in score_results.py splits on
-". ! ?" and could miscount an abbreviation; criterion 4's allowance of 4 of 5
-cards per round may be too generous; or the 40-listing data set only covers a
-few phrasings of each query.`
-
-**Known limits I did not test:** `EDIT OR DELETE. For example: every call_tool
-starts a new server process, which is slow; search_listings is keyword matching,
-so a synonym ("sneakers" for "trainers") will miss a listing that exists; only
-search_listings went through MCP.`
+**Known limits I did not test:** The `dress under $25` query matched nothing, so
+criterion 5 tested four queries, not five. Every `call_tool` starts a new server
+process, which is slow. `search_listings` is keyword matching, so a synonym will
+miss a listing that exists. Only `search_listings` went through MCP. Internal ids
+(`lst_019`, `w_001`) leak into `suggest_outfit` text.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
